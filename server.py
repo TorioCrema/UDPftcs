@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import socket as sk
 import time
+import os
 
 sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
 
@@ -13,11 +14,19 @@ while True:
     data, address = sock.recvfrom(4096)
 
     print('received %s bytes from %s' % (len(data), address))
-    print (data.decode('utf8'))
+    command = data.decode('utf8')
+    print (command)
     
     
-    if data:
-        data1='Programmazione di Reti'
-        time.sleep(2)
-        sent = sock.sendto(data1.encode(), address)
-        print ('sent %s bytes back to %s' % (sent, address))
+    if command == 'ls':
+        files = os.scandir(path = '.')
+        response = 'Available files:\n'
+        for entry in files:
+            if entry.is_file:
+                response += entry.name
+    else:
+        response = 'Available commands:\n'
+        response += 'ls -> lists all files available for download\n'
+
+    sent = sock.sendto(response.encode(), address)
+    print ('sent %s bytes back to %s' % (sent, address))
