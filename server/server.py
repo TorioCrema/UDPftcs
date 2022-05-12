@@ -27,6 +27,7 @@ while True:
         response = 'Available commands:'
         response += '\n'
         response += 'ls -> lists all files available for download'
+        response += "\n"
 
     sent = sock.sendto(response.encode(), address)
     print ('sent %s bytes back to %s' % (sent, address))

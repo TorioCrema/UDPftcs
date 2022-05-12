@@ -29,12 +29,19 @@ if __name__ == "__main__":
         for word in responseList:
             command = word.split()
             commands.append(command[0])
+
     except Exception as info:
         print(info)
         exit
+        
+    print(commands)
 
     while True:
         inputCommand = input("Ender command: ")
+        if inputCommand.split()[0] not in commands:
+            print("Please insert a valid command.")
+            continue
+
         sent = sock.sendto(inputCommand.encode(), server_address)
 
         if inputCommand == "ls":
