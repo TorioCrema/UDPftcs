@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import socket as sk
 import time
 import os
@@ -25,8 +24,9 @@ while True:
             if entry.is_file:
                 response += entry.name
     else:
-        response = 'Available commands:\n'
-        response += 'ls -> lists all files available for download\n'
+        response = 'Available commands:'
+        response += '\n'
+        response += 'ls -> lists all files available for download'
 
     sent = sock.sendto(response.encode(), address)
     print ('sent %s bytes back to %s' % (sent, address))
