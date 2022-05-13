@@ -1,9 +1,10 @@
 import socket as sk
 import time
-from typing_extensions import dataclass_transform
+
+PACKSIZE = 4096
 
 def recFromServer(socket):
-    received, server = socket.recvfrom(4096)
+    received, server = socket.recvfrom(PACKSIZE)
     data = received.decode('utf8')
     return data
 
@@ -20,7 +21,7 @@ if __name__ == "__main__":
         sent = sock.sendto(message.encode(), server_address)
 
         print('waiting for server response\n')
-        data, server = sock.recvfrom(4096)
+        data, server = sock.recvfrom(PACKSIZE)
         received = data.decode('utf8')
         print(received)
 
@@ -34,27 +35,40 @@ if __name__ == "__main__":
         print(info)
         exit
         
-    print(commands)
+    print("Insert ctrl-c to quit.")
 
     while True:
         inputCommand = input("Ender command: ")
         if inputCommand.split()[0] not in commands:
             print("Please insert a valid command.")
             continue
-
-        sent = sock.sendto(inputCommand.encode(), server_address)
+        
+        commandReceived = False
+        while not commandReceived:
+            sent = sock.sendto(inputCommand.encode(), server_address)
+            data = recFromServer(sock)
+            if data == "ACK":
+                commandReceived = True
+            elif data == "Invalid command":
+                print("Invalid command")
+                break
+            
+        
 
         if inputCommand == "ls":
             data = recFromServer(sock)
             print(data)
         elif "get" in inputCommand:
-            # TODO
-            print("not implemented")
+            requestedFile = inputCommand.split()[1]
+            with open(requestedFile, "w") as newFile:
+                packNum = recFromServer(sock)
+                for i in range(packNum):
+                    newFile.write(recFromServer(sock))
+                    print(f"Received package number {i}...")
+            print(f"Downloaded {requestedFile} file from server")
         else:
             break
 
     print ('closing socket')
     sock.close()
     
-
-
