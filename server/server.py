@@ -9,8 +9,9 @@ class ClientConnection:
         self.sock = sock
         self.address = address
 
-    def send(toSend):
-        sock.sendto(toSend.encode, address)
+    def send(self, toSend):
+        sock.sendto(toSend.encode(), address)
+        # print(f"Sent: {toSend}")
 
 sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
 
@@ -29,25 +30,28 @@ while True:
     
     
     if command == 'ls':
+        print("Sending ACK")
+        clientConn.send("ACK")
         files = os.scandir(path = '.')
         response = 'Available files:\n'
         for entry in files:
             if entry.is_file:
                 response += entry.name + "\n"
+        clientConn.send(response)
     elif command.split()[0] == "get":
         try:
             name = command.split()[1]
             with open(name, "r") as requestedFile:
                 response = requestedFile.read()
             segmentNumber = 1
-            responseSize = response.encode().__sizeof__
+            responseSize = len(response.encode())
             if responseSize > 4096:
-                segmentNumber = responseSize / 4096
+                segmentNumber = responseSize // PACKSIZE
         except:
             clientConn.send("Invalid command")
 
         clientConn.send("ACK")
-        sock.sendto(f"{segmentNumber}".encode(), address)
+        clientConn.send(f"{segmentNumber}")
 
         with open(name, "r") as requestedFile:
             responseList = []
@@ -56,10 +60,6 @@ while True:
         for i in range(segmentNumber):
             print(f"Sending package number {i}...")
             clientConn.send(responseList[i])
-            time.sleep(0.1)
-        
-        
-
     else:
         response = 'Available commands:'
         response += '\n'
@@ -67,8 +67,7 @@ while True:
         response += "\n"
         response += "get <fileName> -> Download file"
         response += "\n"
+        clientConn.send(response)
 
-    sent = sock.sendto(response.encode(), address)
-    print ('sent %s bytes back to %s' % (sent, address))
 
     

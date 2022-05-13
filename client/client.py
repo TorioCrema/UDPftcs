@@ -44,11 +44,13 @@ if __name__ == "__main__":
             continue
         
         commandReceived = False
-        while not commandReceived:
+        while commandReceived == False:
             sent = sock.sendto(inputCommand.encode(), server_address)
             data = recFromServer(sock)
             if data == "ACK":
+                print("Valid command")
                 commandReceived = True
+                sock.sendto("ACK".encode(), server_address)
             elif data == "Invalid command":
                 print("Invalid command")
                 break
@@ -60,8 +62,9 @@ if __name__ == "__main__":
             print(data)
         elif "get" in inputCommand:
             requestedFile = inputCommand.split()[1]
+            print(f"Starting download of {requestedFile}")
             with open(requestedFile, "w") as newFile:
-                packNum = recFromServer(sock)
+                packNum = int(recFromServer(sock))
                 for i in range(packNum):
                     newFile.write(recFromServer(sock))
                     print(f"Received package number {i}...")
