@@ -2,7 +2,7 @@ import socket as sk
 import time
 import os
 
-PACKSIZE = 4096
+PACKSIZE = 8192
 
 class ClientConnection:
     def __init__(self, sock, address):
@@ -11,7 +11,6 @@ class ClientConnection:
 
     def send(self, toSend):
         sock.sendto(toSend.encode(), address)
-        # print(f"Sent: {toSend}")
 
 sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
 
@@ -59,6 +58,9 @@ while True:
                 responseList.append(requestedFile.read(PACKSIZE))
         for i in range(segmentNumber):
             print(f"Sending package number {i}...")
+            clientConn.send(str(i))
+            data, address = sock.recvfrom(PACKSIZE)
+            assert i == int(data)
             clientConn.send(responseList[i])
     else:
         response = 'Available commands:'

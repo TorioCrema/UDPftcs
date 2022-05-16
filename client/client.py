@@ -1,28 +1,36 @@
 import socket as sk
 import time
 
-PACKSIZE = 4096
+PACKSIZE = 8192
 
-def recFromServer(socket):
-    received, server = socket.recvfrom(PACKSIZE)
-    data = received.decode('utf8')
-    return data
+class Server:
+    def __init__(self, socket, server_address):
+        self.socket = socket
+        self.address = server_address
+
+    def recFromServer(self):
+        received, address = self.socket.recvfrom(PACKSIZE)
+        return received.decode(), address
+
+    def sendToServer(self, message):
+        return self.socket.sendto(message.encode(), self.address)
 
 
 if __name__ == "__main__":
     sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
     server_address = ('localhost', 10000)
+    server = Server(sock, server_address)
     message = 'first message'
     commands = []
 
     # Get command list from server
     try:
         print (f'sending "{message}"')
-        sent = sock.sendto(message.encode(), server_address)
+        sent = server.sendToServer(message)
 
         print('waiting for server response\n')
-        data, server = sock.recvfrom(PACKSIZE)
-        received = data.decode('utf8')
+
+        received, address = server.recFromServer()
         print(received)
 
         # Create available commands list
@@ -45,12 +53,12 @@ if __name__ == "__main__":
         
         commandReceived = False
         while commandReceived == False:
-            sent = sock.sendto(inputCommand.encode(), server_address)
-            data = recFromServer(sock)
+            sent = server.sendToServer(inputCommand)
+            data, address = server.recFromServer()
             if data == "ACK":
                 print("Valid command")
                 commandReceived = True
-                sock.sendto("ACK".encode(), server_address)
+                #server.sendToServer("ACK")
             elif data == "Invalid command":
                 print("Invalid command")
                 break
@@ -58,15 +66,20 @@ if __name__ == "__main__":
         
 
         if inputCommand == "ls":
-            data = recFromServer(sock)
+            data, address = server.recFromServer()
             print(data)
         elif "get" in inputCommand:
             requestedFile = inputCommand.split()[1]
             print(f"Starting download of {requestedFile}")
             with open(requestedFile, "w") as newFile:
-                packNum = int(recFromServer(sock))
+                data, address = server.recFromServer()
+                packNum = int(data)
                 for i in range(packNum):
-                    newFile.write(recFromServer(sock))
+                    data, address = server.recFromServer()
+                    assert i == int(data)
+                    server.sendToServer(str(i))
+                    data, address = server.recFromServer()
+                    newFile.write(data)
                     print(f"Received package number {i}...")
             print(f"Downloaded {requestedFile} file from server")
         else:
