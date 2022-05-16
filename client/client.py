@@ -5,6 +5,7 @@ import time
 import os
 
 PACKSIZE = 8192
+FILE_DIR = "./files/"
 
 class Server:
     def __init__(self, socket, server_address):
@@ -56,15 +57,16 @@ if __name__ == "__main__":
             continue
 
         # Check number of files in command
-        if inputCommand.split().count() > 2:
+        if len(inputCommand.split()) > 2:
             print("Please upload or download one file at a time.")
             continue
 
         # Check that upload file exists
         if inputCommand.split()[0] == "put":
-            files = os.scandir(path = "./files/")
+            files = os.scandir(path = FILE_DIR)
+            nameList = [i for i in files if i.is_file]
             name = inputCommand.split()[1]
-            if name not in files:
+            if name not in nameList:
                 print(f"File {name} not found.")
                 currDir = os.getcwd()
                 print(f"Make sure the file is in the {currDir}/files directory.")
@@ -75,6 +77,7 @@ if __name__ == "__main__":
         while commandReceived == False:
             sent = server.sendToServer(inputCommand)
             data, address = server.recFromServer()
+            print(f"data={data}")
             if data == "ACK":
                 print("Valid command")
                 commandReceived = True

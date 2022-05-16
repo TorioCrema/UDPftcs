@@ -1,8 +1,11 @@
+import re
 import socket as sk
 import time
 import os
+from math import ceil
 
 PACKSIZE = 8192
+FILE_DIR = "./files/"
 
 class ClientConnection:
     def __init__(self, sock, address):
@@ -20,7 +23,7 @@ sock.bind(server_address)
 
 while True:
     print('\n\r waiting to receive message...')
-    data, address = sock.recvfrom(4096)
+    data, address = sock.recvfrom(PACKSIZE)
     clientConn = ClientConnection(sock, address)
 
     print('received %s bytes from %s' % (len(data), address))
@@ -31,23 +34,23 @@ while True:
     if command == 'ls':
         print("Sending ACK")
         clientConn.send("ACK")
-        files = os.scandir(path = '.')
+        files = os.scandir(path = FILE_DIR)
         response = 'Available files:\n'
         for entry in files:
             if entry.is_file:
                 response += entry.name + "\n"
         clientConn.send(response)
     elif command.split()[0] == "get":
-        try:
-            name = command.split()[1]
-            with open(name, "r") as requestedFile:
-                response = requestedFile.read()
-            segmentNumber = 1
-            responseSize = len(response.encode())
-            if responseSize > 4096:
-                segmentNumber = responseSize // PACKSIZE
-        except:
-            clientConn.send("Invalid command")
+        # try:
+        name = FILE_DIR + command.split()[1]
+        with open(name, "r") as requestedFile:
+            response = requestedFile.read()
+        segmentNumber = 1
+        responseSize = len(response.encode())
+        if responseSize > PACKSIZE:
+            segmentNumber = ceil(responseSize / PACKSIZE)
+        # except:
+        #     clientConn.send("Invalid command")
 
         clientConn.send("ACK")
         clientConn.send(f"{segmentNumber}")
@@ -68,6 +71,8 @@ while True:
         response += 'ls -> lists all files available for download'
         response += "\n"
         response += "get <fileName> -> Download file"
+        response += "\n"
+        response += "put <fileName> -> Upload file"
         response += "\n"
         clientConn.send(response)
 
