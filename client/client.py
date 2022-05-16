@@ -64,7 +64,8 @@ if __name__ == "__main__":
         # Check that upload file exists
         if inputCommand.split()[0] == "put":
             files = os.scandir(path = FILE_DIR)
-            nameList = [i for i in files if i.is_file]
+            nameList = [i.name for i in files if i.is_file]
+            print(nameList)
             name = inputCommand.split()[1]
             if name not in nameList:
                 print(f"File {name} not found.")
@@ -92,7 +93,7 @@ if __name__ == "__main__":
         elif inputCommand.split()[0] == "get":
             requestedFile = inputCommand.split()[1]
             print(f"Starting download of {requestedFile}")
-            with open(requestedFile, "w") as newFile:
+            with open(FILE_DIR + requestedFile, "w") as newFile:
                 data, address = server.recFromServer()
                 packNum = int(data)
                 for i in range(packNum):
@@ -105,7 +106,7 @@ if __name__ == "__main__":
             print(f"Downloaded {requestedFile} file from server")
         elif inputCommand.split()[0] == "put":
             try: 
-                name = inputCommand.split()[1]
+                name = FILE_DIR + inputCommand.split()[1]
                 with open(name, "r") as toUpload:
                     data = toUpload.read()
                 packNum = 1
@@ -125,6 +126,7 @@ if __name__ == "__main__":
                 data, address = server.recFromServer()
                 assert i == int(data)
                 server.sendToServer(uploadList[i])
+            print(f"File {name} uploaded correctly.")
 
 
         else:

@@ -15,6 +15,10 @@ class ClientConnection:
     def send(self, toSend):
         sock.sendto(toSend.encode(), address)
 
+    def recv(self):
+        data, address = self.sock.recvfrom(PACKSIZE)
+        return data.decode(), address
+
 sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
 
 server_address = ('localhost', 10000)
@@ -65,6 +69,21 @@ while True:
             data, address = sock.recvfrom(PACKSIZE)
             assert i == int(data)
             clientConn.send(responseList[i])
+    elif command.split()[0] == "put":
+        clientConn.send("ACK")
+        requestedFile = command.split()[1]
+        print(f"Starting download of {requestedFile}")
+        with open(FILE_DIR + requestedFile, "w") as newFile:
+            data, address = clientConn.recv()
+            packNum = int(data)
+            for i in range(packNum):
+                data, address = clientConn.recv()
+                assert i == int(data)
+                clientConn.send(str(i))
+                data, address = clientConn.recv()
+                newFile.write(data)
+                print(f"Received package number {i}/{packNum}", end="\r")
+        print(f"Downloaded {requestedFile} file from client.")
     else:
         response = 'Available commands:'
         response += '\n'
