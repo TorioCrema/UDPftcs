@@ -57,7 +57,7 @@ while True:
             for i in range(segmentNumber):
                 responseList.append(requestedFile.read(PACKSIZE))
         for i in range(segmentNumber):
-            print(f"Sending package number {i}...")
+            print(f"Sending package number {i}/{segmentNumber}", end='\r')
             clientConn.send(str(i))
             data, address = sock.recvfrom(PACKSIZE)
             assert i == int(data)

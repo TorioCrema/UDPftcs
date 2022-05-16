@@ -80,7 +80,7 @@ if __name__ == "__main__":
                     server.sendToServer(str(i))
                     data, address = server.recFromServer()
                     newFile.write(data)
-                    print(f"Received package number {i}...")
+                    print(f"Received package number {i}/{packNum}", end="\r")
             print(f"Downloaded {requestedFile} file from server")
         else:
             break
