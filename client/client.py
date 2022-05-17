@@ -56,7 +56,7 @@ if __name__ == "__main__":
     print("Insert ctrl-c to quit.\n")
 
     while True:
-        inputCommand = input("Ender command: ")
+        inputCommand = input("Enter command: ")
         # Check that command is in command list from server
         if inputCommand.split()[0] not in commands:
             print("Please insert a valid command.")
