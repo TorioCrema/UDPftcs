@@ -3,21 +3,22 @@ import signal
 import socket as sk
 import os
 import sys
+from typing import Tuple
 
 PACKSIZE = 8192
 FILE_DIR = "./files/"
 
 class Server:
-    def __init__(self, socket, server_address):
+    def __init__(self, socket: sk.socket, server_address):
         self.socket = socket
         self.address = server_address
 
-    def recFromServer(self):
+    def recFromServer(self) -> Tuple:
         received, address = self.socket.recvfrom(PACKSIZE)
-        return received.decode(), address
+        return received, address
 
-    def sendToServer(self, message):
-        return self.socket.sendto(message.encode(), self.address)
+    def sendToServer(self, message: str):
+        return self.socket.sendto(message, self.address)
 
 def signalHandler(signal, frame):
     print("\nExiting...\n")
@@ -35,10 +36,11 @@ if __name__ == "__main__":
     while True:
         try:
             print (f'sending "{message}"')
-            sent = server.sendToServer(message)
+            sent = server.sendToServer(message.encode())
     
             print('waiting for server response\n')
             received, address = server.recFromServer()
+            received = received.decode()
             print(received)
     
             # Create available commands list
@@ -69,7 +71,6 @@ if __name__ == "__main__":
         if inputCommand.split()[0] == "put":
             files = os.scandir(path = FILE_DIR)
             nameList = [i.name for i in files if i.is_file]
-            print(nameList)
             name = inputCommand.split()[1]
             if name not in nameList:
                 print(f"File {name} not found.")
@@ -78,8 +79,9 @@ if __name__ == "__main__":
                 continue
 
         # Check command is valid from server
-        sent = server.sendToServer(inputCommand)
+        sent = server.sendToServer(inputCommand.encode())
         data, address = server.recFromServer()
+        data = data.decode()
         if data == "ACK":
             print("Valid command")
         elif data == "Invalid command":
@@ -89,42 +91,46 @@ if __name__ == "__main__":
         
         if inputCommand == "ls":
             data, address = server.recFromServer()
+            data = data.decode()
             print(data)
         elif inputCommand.split()[0] == "get":
             requestedFile = inputCommand.split()[1]
             print(f"Starting download of {requestedFile}")
-            with open(FILE_DIR + requestedFile, "w") as newFile:
+            with open(FILE_DIR + requestedFile, "wb") as newFile:
                 data, address = server.recFromServer()
+                data = data.decode()
                 packNum = int(data)
                 for i in range(packNum):
                     data, address = server.recFromServer()
-                assert i == int(data)
-                server.sendToServer(str(i))
-                data, address = server.recFromServer()
-                newFile.write(data)
-                print(f"Received package number {i}/{packNum}", end="\r")
+                    data = data.decode()
+                    assert i == int(data)
+                    server.sendToServer(str(i).encode())
+                    data, address = server.recFromServer()
+                    newFile.write(data)
+                    print(f"Received package number {i}/{packNum}", end="\r")
 
             print(f"Downloaded {requestedFile} file from server")
         elif inputCommand.split()[0] == "put":
             try: 
                 name = FILE_DIR + inputCommand.split()[1]
-                with open(name, "r") as toUpload:
+                with open(name, "rb") as toUpload:
                     data = toUpload.read()
                 packNum = 1
-                dataSize = len(data.encode())
+                dataSize = len(data)
                 if dataSize > PACKSIZE:
                     packNum = ceil(dataSize / PACKSIZE)
             except:
                 exit() # TODO
-            server.sendToServer(str(packNum))
-            with open(name, "r") as toUpload:
+            server.sendToServer(str(packNum).encode())
+            with open(name, "rb") as toUpload:
                 uploadList = []
                 for i in range(packNum):
                     uploadList.append(toUpload.read(PACKSIZE))
             for i in range(packNum):
                 print(f"Sending package number {i}/{packNum}", end="\r")
-                server.sendToServer(str(i))
+                server.sendToServer(str(i).encode())
                 data, address = server.recFromServer()
+                data = data.decode()
                 assert i == int(data)
                 server.sendToServer(uploadList[i])
             print(f"File {name} uploaded correctly.")

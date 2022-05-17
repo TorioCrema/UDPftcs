@@ -1,21 +1,22 @@
 import socket as sk
 import os
 from math import ceil
+from typing import Tuple
 
 PACKSIZE = 8192
 FILE_DIR = "./files/"
 
 class ClientConnection:
-    def __init__(self, sock, address):
+    def __init__(self, sock: sk.socket, address):
         self.sock = sock
         self.address = address
 
-    def send(self, toSend):
-        sock.sendto(toSend.encode(), address)
+    def send(self, toSend: bytes):
+        sock.sendto(toSend, address)
 
-    def recv(self):
+    def recv(self) -> Tuple:
         data, address = self.sock.recvfrom(PACKSIZE)
-        return data.decode(), address
+        return data, address
 
 sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
 
@@ -35,50 +36,53 @@ while True:
     
     if command == 'ls':
         print("Sending ACK")
-        clientConn.send("ACK")
+        clientConn.send("ACK".encode())
         files = os.scandir(path = FILE_DIR)
         response = 'Available files:\n'
         for entry in files:
             if entry.is_file:
                 response += entry.name + "\n"
-        clientConn.send(response)
+        clientConn.send(response.encode())
     elif command.split()[0] == "get":
         try:
             name = FILE_DIR + command.split()[1]
-            with open(name, "r") as requestedFile:
+            with open(name, "rb") as requestedFile:
                 response = requestedFile.read()
             segmentNumber = 1
-            responseSize = len(response.encode())
+            responseSize = len(response)
             if responseSize > PACKSIZE:
                 segmentNumber = ceil(responseSize / PACKSIZE)
         except:
-            clientConn.send("Invalid command")
+            clientConn.send("Invalid command".encode())
             continue
 
-        clientConn.send("ACK")
-        clientConn.send(f"{segmentNumber}")
+        clientConn.send("ACK".encode())
+        clientConn.send(str(segmentNumber).encode())
 
-        with open(name, "r") as requestedFile:
+        with open(name, "rb") as requestedFile:
             responseList = []
             for i in range(segmentNumber):
                 responseList.append(requestedFile.read(PACKSIZE))
         for i in range(segmentNumber):
             print(f"Sending package number {i}/{segmentNumber}", end='\r')
-            clientConn.send(str(i))
-            data, address = sock.recvfrom(PACKSIZE)
+            clientConn.send(str(i).encode())
+            data, address = clientConn.recv()
+            data = data.decode()
             assert i == int(data)
             clientConn.send(responseList[i])
     elif command.split()[0] == "put":
-        clientConn.send("ACK")
+        clientConn.send("ACK".encode())
         requestedFile = command.split()[1]
         print(f"Starting download of {requestedFile}")
-        with open(FILE_DIR + requestedFile, "w") as newFile:
+        with open(FILE_DIR + requestedFile, "wb") as newFile:
             data, address = clientConn.recv()
+            data = data.decode()
             packNum = int(data)
             for i in range(packNum):
                 data, address = clientConn.recv()
+                data = data.decode()
                 assert i == int(data)
-                clientConn.send(str(i))
+                clientConn.send(str(i).encode())
                 data, address = clientConn.recv()
                 newFile.write(data)
                 print(f"Received package number {i}/{packNum}", end="\r")
@@ -92,7 +96,7 @@ while True:
         response += "\n"
         response += "put <fileName> -> Upload file"
         response += "\n"
-        clientConn.send(response)
+        clientConn.send(response.encode())
 
 
     
