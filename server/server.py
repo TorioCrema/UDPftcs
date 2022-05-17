@@ -1,6 +1,4 @@
-import re
 import socket as sk
-import time
 import os
 from math import ceil
 
@@ -45,16 +43,17 @@ while True:
                 response += entry.name + "\n"
         clientConn.send(response)
     elif command.split()[0] == "get":
-        # try:
-        name = FILE_DIR + command.split()[1]
-        with open(name, "r") as requestedFile:
-            response = requestedFile.read()
-        segmentNumber = 1
-        responseSize = len(response.encode())
-        if responseSize > PACKSIZE:
-            segmentNumber = ceil(responseSize / PACKSIZE)
-        # except:
-        #     clientConn.send("Invalid command")
+        try:
+            name = FILE_DIR + command.split()[1]
+            with open(name, "r") as requestedFile:
+                response = requestedFile.read()
+            segmentNumber = 1
+            responseSize = len(response.encode())
+            if responseSize > PACKSIZE:
+                segmentNumber = ceil(responseSize / PACKSIZE)
+        except:
+            clientConn.send("Invalid command")
+            continue
 
         clientConn.send("ACK")
         clientConn.send(f"{segmentNumber}")

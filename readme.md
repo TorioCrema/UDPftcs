@@ -2,6 +2,5 @@
 
 
 #### TODO
-- implement `get` command server-side
 - implement recovery from package loss
-- 
+- implement timeout for all data receptions
