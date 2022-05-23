@@ -1,3 +1,4 @@
+from functools import partial
 import pickle
 from math import ceil
 import signal
@@ -25,7 +26,8 @@ class Server:
     def sendStrToServer(self, message: str):
         return self.sendToServer(message.encode())
 
-def signalHandler(signal, frame):
+def signalHandler(signal, frame, socket: sk.socket):
+    socket.close()
     print("\nExiting...\n")
     sys.exit(0)
 
@@ -64,6 +66,7 @@ if __name__ == "__main__":
             print(info)
             continue
         
+    signalHandler = partial(signalHandler, socket=server.socket)
     signal.signal(signal.SIGINT, signalHandler)
     print("Insert ctrl-c to quit.\n")
 
@@ -101,11 +104,11 @@ if __name__ == "__main__":
             print(data)
 
         elif inputCommand.split()[0] == "get":
+            requestedFile = inputCommand.split()[1]
             packNum = -1
             packList = []
             while len(packList) != packNum:
                 try:
-                    requestedFile = inputCommand.split()[1]
                     print(f"Starting download of {requestedFile}", end='\r')
                     data, address = server.recFromServer()
                     data = data.decode()
@@ -138,20 +141,26 @@ if __name__ == "__main__":
                 if dataSize > PACKSIZE:
                     packNum = ceil(dataSize / PACKSIZE)
             except:
-                exit() # TODO
+                print("Error while reading file.")
+                continue
             server.sendStrToServer(str(packNum))
             with open(name, "rb") as toUpload:
                 uploadList = []
                 for i in range(packNum):
-                    uploadList.append(toUpload.read(PACKSIZE))
+                    uploadList.append({"index": i, "bytes": toUpload.read(PACKSIZE)})
             for i in range(packNum):
                 print(f"Sending package number {i}/{packNum}", end="\r")
-                server.sendStrToServer(str(i))
+                server.sendToServer(pickle.dumps(uploadList[i]))
+            server.sendToServer(pickle.dumps({"index": -1, "bytes": b"0"}))
+            try:
                 data, address = server.recFromServer()
                 data = data.decode()
-                assert i == int(data)
-                server.sendToServer(uploadList[i])
-            print(f"File {name} uploaded correctly.")
+                if data == "ACK":
+                    print(f"File {name} uploaded correctly.")
+                else:
+                    print("Error while uploading file, try again.")
+            except sk.timeout:
+                print("Server timed out, file might not have been uploaded.")
         else:
             break
 
