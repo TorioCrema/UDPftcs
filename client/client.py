@@ -1,3 +1,5 @@
+import json
+import pickle
 from math import ceil
 import signal
 import socket as sk
@@ -6,6 +8,7 @@ import sys
 from typing import Tuple
 
 PACKSIZE = 8192
+BUFF = 16384
 FILE_DIR = "./files/"
 
 class Server:
@@ -14,11 +17,14 @@ class Server:
         self.address = server_address
 
     def recFromServer(self) -> Tuple:
-        received, address = self.socket.recvfrom(PACKSIZE)
+        received, address = self.socket.recvfrom(BUFF)
         return received, address
 
-    def sendToServer(self, message: str):
+    def sendToServer(self, message: bytes):
         return self.socket.sendto(message, self.address)
+
+    def sendStrToServer(self, message: str):
+        return self.sendToServer(message.encode())
 
 def signalHandler(signal, frame):
     print("\nExiting...\n")
@@ -28,7 +34,7 @@ if __name__ == "__main__":
     sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
     server_address = ('localhost', 10000)
     server = Server(sock, server_address)
-    server.socket.settimeout(3)
+    server.socket.settimeout(3.0)
     message = 'first message'
     commands = []
 
@@ -36,7 +42,7 @@ if __name__ == "__main__":
     while True:
         try:
             print (f'sending "{message}"')
-            sent = server.sendToServer(message.encode())
+            sent = server.sendStrToServer(message)
     
             print('waiting for server response\n')
             received, address = server.recFromServer()
@@ -50,6 +56,7 @@ if __name__ == "__main__":
                 commands.append(command[0])
             break
         except Exception as info:
+            print(info)
             continue
         
     signal.signal(signal.SIGINT, signalHandler)
@@ -79,12 +86,12 @@ if __name__ == "__main__":
                 continue
 
         # Check command is valid from server
-        sent = server.sendToServer(inputCommand.encode())
+        sent = server.sendStrToServer(inputCommand)
         data, address = server.recFromServer()
         data = data.decode()
         if data == "ACK":
             print("Valid command")
-        elif data == "Invalid command":
+        else:
             print("Invalid command")
             continue
             
@@ -96,19 +103,42 @@ if __name__ == "__main__":
         elif inputCommand.split()[0] == "get":
             requestedFile = inputCommand.split()[1]
             print(f"Starting download of {requestedFile}")
-            with open(FILE_DIR + requestedFile, "wb") as newFile:
+            data, address = server.recFromServer()
+            data = data.decode()
+            packNum = int(data)
+            packList = []
+            missingList = [i for i in range(packNum)]
+            # receive until end of transmission from server or timeout
+            try:
                 data, address = server.recFromServer()
-                data = data.decode()
-                packNum = int(data)
-                for i in range(packNum):
+                data = pickle.loads(data)
+                while data['index'] != -1:
+                    packList.insert(data["index"], data["bytes"])
+                    missingList.remove(data["index"])
                     data, address = server.recFromServer()
-                    data = data.decode()
-                    assert i == int(data)
-                    server.sendToServer(str(i).encode())
-                    data, address = server.recFromServer()
-                    newFile.write(data)
-                    print(f"Received package number {i}/{packNum}", end="\r")
+                    data = pickle.loads(data)
+            except sk.timeout:
+                print("Server timedout during file transmission")
 
+            # request each missing pack individually
+            current = 0
+            while current < len(missingList):
+                try:
+                    server.sendStrToServer(str(missingList[current]))
+                    data, address = server.recFromServer()
+                    data = pickle.loads(data)
+                    if data["index"] != missingList[current]:
+                        continue
+                    packList.insert(data["index"], data["bytes"])
+                    current += 1
+                except sk.timeout:
+                    pass
+
+            server.sendStrToServer("-1")
+
+            with open(FILE_DIR + requestedFile, "wb") as newFile:
+                for i in packList:
+                    newFile.write(i)
             print(f"Downloaded {requestedFile} file from server")
         elif inputCommand.split()[0] == "put":
             try: 
@@ -121,14 +151,14 @@ if __name__ == "__main__":
                     packNum = ceil(dataSize / PACKSIZE)
             except:
                 exit() # TODO
-            server.sendToServer(str(packNum).encode())
+            server.sendStrToServer(str(packNum))
             with open(name, "rb") as toUpload:
                 uploadList = []
                 for i in range(packNum):
                     uploadList.append(toUpload.read(PACKSIZE))
             for i in range(packNum):
                 print(f"Sending package number {i}/{packNum}", end="\r")
-                server.sendToServer(str(i).encode())
+                server.sendStrToServer(str(i))
                 data, address = server.recFromServer()
                 data = data.decode()
                 assert i == int(data)

@@ -1,9 +1,12 @@
+import json
+import pickle
 import socket as sk
 import os
 from math import ceil
 from typing import Tuple
 
 PACKSIZE = 8192
+BUFF = 16384
 FILE_DIR = "./files/"
 
 class ClientConnection:
@@ -15,7 +18,7 @@ class ClientConnection:
         sock.sendto(toSend, address)
 
     def recv(self) -> Tuple:
-        data, address = self.sock.recvfrom(PACKSIZE)
+        data, address = self.sock.recvfrom(BUFF)
         return data, address
 
 sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
@@ -26,7 +29,7 @@ sock.bind(server_address)
 
 while True:
     print('\n\r waiting to receive message...')
-    data, address = sock.recvfrom(PACKSIZE)
+    data, address = sock.recvfrom(BUFF)
     clientConn = ClientConnection(sock, address)
 
     print('received %s bytes from %s' % (len(data), address))
@@ -58,18 +61,23 @@ while True:
 
         clientConn.send("ACK".encode())
         clientConn.send(str(segmentNumber).encode())
-
         with open(name, "rb") as requestedFile:
             responseList = []
             for i in range(segmentNumber):
-                responseList.append(requestedFile.read(PACKSIZE))
+                responseList.append({"index": i, "bytes": requestedFile.read(PACKSIZE)})
         for i in range(segmentNumber):
             print(f"Sending package number {i}/{segmentNumber}", end='\r')
-            clientConn.send(str(i).encode())
+            clientConn.send(pickle.dumps(responseList[i]))
+        # send end of file
+        clientConn.send(pickle.dumps({"index": -1, "bytes": b"0"}))
+        # check missing packets
+        data, address = clientConn.recv()
+        data = data.decode()
+        print(f"data={data}")
+        while data != "-1":
+            clientConn.send(pickle.dumps(responseList[int(data)])) # invalid literal for int???
             data, address = clientConn.recv()
             data = data.decode()
-            assert i == int(data)
-            clientConn.send(responseList[i])
     elif command.split()[0] == "put":
         clientConn.send("ACK".encode())
         requestedFile = command.split()[1]
