@@ -2,4 +2,4 @@
 
 #### TODO:
 - implement logging
-
+- use pickle to encode dict
