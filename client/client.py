@@ -24,16 +24,18 @@ class Server:
         if type(message) == str: message = message.encode()
         return self.socket.sendto(message, self.address)
 
+    def sendCommand(self, command: str) -> bool:
+        sent = self.sendToServer(command)
+        data, address = self.recFromServer()
+        data = data.decode()
+        return data == "ACK"
+
 def signalHandler(signal, frame, socket: sk.socket):
     socket.close()
     print("\nExiting...\n")
     sys.exit(0)
 
-def sendCommand(command: str, server: Server) -> bool:
-    sent = server.sendToServer(command)
-    data, address = server.recFromServer()
-    data = data.decode()
-    return data == "ACK"
+
 
 if __name__ == "__main__":
     sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
@@ -91,7 +93,7 @@ if __name__ == "__main__":
                 continue
 
         # Check command is valid from server
-        if sendCommand(inputCommand, server) == False:
+        if server.sendCommand(inputCommand) == False:
             print("Invalid command.")
             break
             
@@ -119,7 +121,7 @@ if __name__ == "__main__":
                         data = pickle.loads(data)
                 except sk.timeout:
                     # if server times out, send command again
-                    sendCommand(inputCommand, server)
+                    server.sendCommand(inputCommand)
                     print("Server timed out, starting over.")
                     packList = []
                     continue
@@ -163,5 +165,3 @@ if __name__ == "__main__":
 
     print ('closing socket')
     sock.close()
-    
-
