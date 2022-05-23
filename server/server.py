@@ -11,11 +11,13 @@ PACKSIZE = 8192
 BUFF = 16384
 FILE_DIR = "./files/"
 
+
 def intSignalHandler(signal, frame, socket: sk.socket):
     print("Closing socket.")
     socket.close()
     print("Exiting")
     sys.exit(0)
+
 
 class ClientConnection:
     def __init__(self, sock: sk.socket, address):
@@ -29,13 +31,14 @@ class ClientConnection:
         data, address = self.sock.recvfrom(BUFF)
         return data, address
 
+
 if __name__ == "__main__":
     sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
-    intSignalHandler = partial(intSignalHandler, socket = sock)
-    signal.signal(signal.SIGINT, intSignalHandler )
+    intSignalHandler = partial(intSignalHandler, socket=sock)
+    signal.signal(signal.SIGINT, intSignalHandler)
 
     server_address = ('localhost', 10000)
-    print ('\n\r starting up on %s port %s' % server_address)
+    print(f'Starting up on {server_address[0]} port {server_address[1]}')
     sock.bind(server_address)
 
     while True:
@@ -47,11 +50,10 @@ if __name__ == "__main__":
         command = data.decode('utf8')
         print(command)
 
-
         if command == 'ls':
             print("Sending ACK")
             clientConn.send("ACK".encode())
-            files = os.scandir(path = FILE_DIR)
+            files = os.scandir(path=FILE_DIR)
             response = 'Available files:\n'
             for entry in files:
                 if entry.is_file:
@@ -66,16 +68,17 @@ if __name__ == "__main__":
                 responseSize = len(response)
                 if responseSize > PACKSIZE:
                     segmentNumber = ceil(responseSize / PACKSIZE)
-            except:
+            except IOError:
                 clientConn.send("Invalid command".encode())
                 continue
 
             clientConn.send("ACK".encode())
             clientConn.send(str(segmentNumber).encode())
-            with open(name, "rb") as requestedFile:
+            with open(name, "rb") as file:
                 responseList = []
                 for i in range(segmentNumber):
-                    responseList.append({"index": i, "bytes": requestedFile.read(PACKSIZE)})
+                    toSend = {"index": i, "bytes": file.read(PACKSIZE)}
+                    responseList.append(toSend)
             for i in range(segmentNumber):
                 print(f"Sending package number {i}/{segmentNumber}", end='\r')
                 clientConn.send(pickle.dumps(responseList[i]))
