@@ -1,2 +1,2 @@
-./server/files/*
-./client/files/*
+server/files/*
+client/files/*
