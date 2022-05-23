@@ -29,6 +29,12 @@ def signalHandler(signal, frame):
     print("\nExiting...\n")
     sys.exit(0)
 
+def sendCommand(command: str, server: Server) -> bool:
+    sent = server.sendStrToServer(command)
+    data, address = server.recFromServer()
+    data = data.decode()
+    return data == "ACK"
+
 if __name__ == "__main__":
     sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
     server_address = ('localhost', 10000)
@@ -79,61 +85,44 @@ if __name__ == "__main__":
             nameList = [i.name for i in files if i.is_file]
             name = inputCommand.split()[1]
             if name not in nameList:
-                print(f"File {name} not found.")
                 currDir = os.getcwd()
-                print(f"Make sure the file is in the {currDir}/files directory.")
+                print(f"File {name} not found.\nMake sure the file is in the {currDir}/files directory.")
                 continue
 
         # Check command is valid from server
-        sent = server.sendStrToServer(inputCommand)
-        data, address = server.recFromServer()
-        data = data.decode()
-        if data == "ACK":
-            print("Valid command")
-        else:
-            print("Invalid command")
-            continue
+        if sendCommand(inputCommand, server) == False:
+            print("Invalid command.")
+            break
             
         
         if inputCommand == "ls":
             data, address = server.recFromServer()
             data = data.decode()
             print(data)
+
         elif inputCommand.split()[0] == "get":
-            requestedFile = inputCommand.split()[1]
-            print(f"Starting download of {requestedFile}")
-            data, address = server.recFromServer()
-            data = data.decode()
-            packNum = int(data)
+            packNum = -1
             packList = []
-            missingList = [i for i in range(packNum)]
-            # receive until end of transmission from server or timeout
-            try:
-                data, address = server.recFromServer()
-                data = pickle.loads(data)
-                while data['index'] != -1:
-                    packList.insert(data["index"], data["bytes"])
-                    missingList.remove(data["index"])
-                    data, address = server.recFromServer()
-                    data = pickle.loads(data)
-            except sk.timeout:
-                print("Server timedout during file transmission")
-
-            # request each missing pack individually
-            current = 0
-            while current < len(missingList):
+            while len(packList) != packNum:
                 try:
-                    server.sendStrToServer(str(missingList[current]))
+                    requestedFile = inputCommand.split()[1]
+                    print(f"Starting download of {requestedFile}", end='\r')
+                    data, address = server.recFromServer()
+                    data = data.decode()
+                    packNum = int(data)
                     data, address = server.recFromServer()
                     data = pickle.loads(data)
-                    if data["index"] != missingList[current]:
-                        continue
-                    packList.insert(data["index"], data["bytes"])
-                    current += 1
+                    while data['index'] != -1:
+                        packList.insert(data["index"], data["bytes"])
+                        data, address = server.recFromServer()
+                        data = pickle.loads(data)
                 except sk.timeout:
-                    pass
-
-            server.sendStrToServer("-1")
+                    sendCommand(inputCommand, server)
+                    print("Server timed out, starting over.")
+                    packList = []
+                    continue
+                
+            # request each missing pack individually
 
             with open(FILE_DIR + requestedFile, "wb") as newFile:
                 for i in packList:
@@ -169,3 +158,4 @@ if __name__ == "__main__":
     print ('closing socket')
     sock.close()
     
+

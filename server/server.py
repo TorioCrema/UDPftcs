@@ -69,14 +69,6 @@ while True:
             clientConn.send(pickle.dumps(responseList[i]))
         # send end of file
         clientConn.send(pickle.dumps({"index": -1, "bytes": b"0"}))
-        # check missing packets
-        data, address = clientConn.recv()
-        data = data.decode()
-        print(f"data={data}")
-        while data != "-1":
-            clientConn.send(pickle.dumps(responseList[int(data)])) # invalid literal for int???
-            data, address = clientConn.recv()
-            data = data.decode()
     elif command.split()[0] == "put":
         clientConn.send("ACK".encode())
         requestedFile = command.split()[1]
