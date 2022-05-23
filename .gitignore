@@ -1,2 +1,3 @@
 server/files/*
 client/files/*
+__pycache__
