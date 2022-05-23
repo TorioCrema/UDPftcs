@@ -11,6 +11,7 @@ PACKSIZE = 8192
 BUFF = 16384
 FILE_DIR = "./files/"
 
+
 class Server:
     def __init__(self, socket: sk.socket, server_address):
         self.socket = socket
@@ -21,20 +22,21 @@ class Server:
         return received, address
 
     def sendToServer(self, message: bytes):
-        if type(message) == str: message = message.encode()
+        if type(message) == str:
+            message = message.encode()
         return self.socket.sendto(message, self.address)
 
     def sendCommand(self, command: str) -> bool:
-        sent = self.sendToServer(command)
+        self.sendToServer(command)
         data, address = self.recFromServer()
         data = data.decode()
         return data == "ACK"
+
 
 def signalHandler(signal, frame, socket: sk.socket):
     socket.close()
     print("\nExiting...\n")
     sys.exit(0)
-
 
 
 if __name__ == "__main__":
@@ -48,14 +50,12 @@ if __name__ == "__main__":
     # Get command list from server
     while True:
         try:
-            print (f'sending "{message}"')
+            print(f'sending "{message}"')
             sent = server.sendToServer(message)
-    
             print('waiting for server response\n')
             received, address = server.recFromServer()
             received = received.decode()
             print(received)
-    
             # Create available commands list
             responseList = received.split('\n')[1:-1]
             for word in responseList:
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         except Exception as info:
             print(info)
             continue
-        
+
     signalHandler = partial(signalHandler, socket=server.socket)
     signal.signal(signal.SIGINT, signalHandler)
     print("Insert ctrl-c to quit.\n")
@@ -84,20 +84,21 @@ if __name__ == "__main__":
 
         # Check that upload file exists
         if inputCommand.split()[0] == "put":
-            files = os.scandir(path = FILE_DIR)
+            files = os.scandir(path=FILE_DIR)
             nameList = [i.name for i in files if i.is_file]
             name = inputCommand.split()[1]
             if name not in nameList:
                 currDir = os.getcwd()
-                print(f"File {name} not found.\nMake sure the file is in the {currDir}/files directory.")
+                print(f"File {name} not found.")
+                print("Make sure the file is in the ", end="")
+                print(f"{currDir}/files directory.")
                 continue
 
         # Check command is valid from server
-        if server.sendCommand(inputCommand) == False:
+        if server.sendCommand(inputCommand) is False:
             print("Invalid command.")
             break
-            
-        
+
         if inputCommand == "ls":
             data, address = server.recFromServer()
             data = data.decode()
@@ -131,7 +132,7 @@ if __name__ == "__main__":
             print(f"Downloaded {requestedFile} file from server")
 
         elif inputCommand.split()[0] == "put":
-            try: 
+            try:
                 name = FILE_DIR + inputCommand.split()[1]
                 with open(name, "rb") as toUpload:
                     data = toUpload.read()
@@ -139,14 +140,16 @@ if __name__ == "__main__":
                 dataSize = len(data)
                 if dataSize > PACKSIZE:
                     packNum = ceil(dataSize / PACKSIZE)
-            except:
+            except IOError:
                 print("Error while reading file.")
                 continue
             server.sendToServer(str(packNum))
             with open(name, "rb") as toUpload:
                 uploadList = []
                 for i in range(packNum):
-                    uploadList.append({"index": i, "bytes": toUpload.read(PACKSIZE)})
+                    uploadList.append(
+                        {"index": i, "bytes": toUpload.read(PACKSIZE)}
+                    )
             for i in range(packNum):
                 print(f"Sending package number {i}/{packNum}", end="\r")
                 server.sendToServer(pickle.dumps(uploadList[i]))
@@ -163,5 +166,5 @@ if __name__ == "__main__":
         else:
             break
 
-    print ('closing socket')
+    print('closing socket')
     sock.close()
