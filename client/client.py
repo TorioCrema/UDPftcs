@@ -21,10 +21,8 @@ class Server:
         return received, address
 
     def sendToServer(self, message: bytes):
+        if type(message) == str: message = message.encode()
         return self.socket.sendto(message, self.address)
-
-    def sendStrToServer(self, message: str):
-        return self.sendToServer(message.encode())
 
 def signalHandler(signal, frame, socket: sk.socket):
     socket.close()
@@ -32,7 +30,7 @@ def signalHandler(signal, frame, socket: sk.socket):
     sys.exit(0)
 
 def sendCommand(command: str, server: Server) -> bool:
-    sent = server.sendStrToServer(command)
+    sent = server.sendToServer(command)
     data, address = server.recFromServer()
     data = data.decode()
     return data == "ACK"
@@ -49,7 +47,7 @@ if __name__ == "__main__":
     while True:
         try:
             print (f'sending "{message}"')
-            sent = server.sendStrToServer(message)
+            sent = server.sendToServer(message)
     
             print('waiting for server response\n')
             received, address = server.recFromServer()
@@ -120,17 +118,16 @@ if __name__ == "__main__":
                         data, address = server.recFromServer()
                         data = pickle.loads(data)
                 except sk.timeout:
+                    # if server times out, send command again
                     sendCommand(inputCommand, server)
                     print("Server timed out, starting over.")
                     packList = []
                     continue
-                
-            # request each missing pack individually
-
             with open(FILE_DIR + requestedFile, "wb") as newFile:
                 for i in packList:
                     newFile.write(i)
             print(f"Downloaded {requestedFile} file from server")
+
         elif inputCommand.split()[0] == "put":
             try: 
                 name = FILE_DIR + inputCommand.split()[1]
@@ -143,7 +140,7 @@ if __name__ == "__main__":
             except:
                 print("Error while reading file.")
                 continue
-            server.sendStrToServer(str(packNum))
+            server.sendToServer(str(packNum))
             with open(name, "rb") as toUpload:
                 uploadList = []
                 for i in range(packNum):
