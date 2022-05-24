@@ -30,7 +30,7 @@ def getFileLen(fileName: str) -> int:
     return packNum
 
 
-def getResponseList(fileName: str) -> List:
+def getResponseList(fileName: str, segmentNumber: int) -> List:
     with open(FILE_DIR + fileName, "rb") as file:
         responseList = []
         for i in range(segmentNumber):
@@ -47,11 +47,24 @@ class ClientConnection:
     def send(self, toSend):
         if type(toSend) == str:
             toSend = toSend.encode()
-        sock.sendto(toSend, address)
+        self.sock.sendto(toSend, self.address)
 
     def recv(self) -> Tuple:
         data, address = self.sock.recvfrom(BUFF)
         return data, address
+
+
+def recvFile(clientConn: ClientConnection, data: dict) -> List:
+    while data['index'] != -1:
+        packList.insert(data["index"], data["bytes"])
+        data, address = clientConn.recv()
+        data = pickle.loads(data)
+
+
+def writeFile(fileName: str, packList: List):
+    with open(FILE_DIR + fileName, "wb") as file:
+        for pack in packList:
+            file.write(pack)
 
 
 if __name__ == "__main__":
@@ -92,7 +105,7 @@ if __name__ == "__main__":
             clientConn.send("ACK")
             clientConn.send(str(segmentNumber))
 
-            responseList = getResponseList(name)
+            responseList = getResponseList(name, segmentNumber)
             for i in range(segmentNumber):
                 print(f"Sending package number {i}/{segmentNumber}", end='\r')
                 clientConn.send(pickle.dumps(responseList[i]))
@@ -112,16 +125,11 @@ if __name__ == "__main__":
                     packNum = int(data)
                     data, address = clientConn.recv()
                     data = pickle.loads(data)
-                    while data['index'] != -1:
-                        packList.insert(data["index"], data["bytes"])
-                        data, address = clientConn.recv()
-                        data = pickle.loads(data)
-                    with open(FILE_DIR + requestedFile, "wb") as newFile:
-                        for packData in packList:
-                            newFile.write(packData)
+                    packList = recvFile(clientConn, data)
+                    writeFile(requestedFile, packList)
                     print(f"{requestedFile} downloaded from client correctly.")
                     clientConn.send("ACK")
-                except sk.timeout:
+                except sk.timeout or IOError:
                     print("Error while downloading file, aborting operation.")
                     clientConn.send("Error")
                     os.remove(os.path.join(FILE_DIR, requestedFile))
