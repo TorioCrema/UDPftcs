@@ -1,0 +1,3 @@
+PACKSIZE = 8192
+BUFF = 16384
+FILE_DIR = "./files/"

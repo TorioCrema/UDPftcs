@@ -3,13 +3,11 @@ import pickle
 import signal
 import socket as sk
 import os
+from config import FILE_DIR, BUFF, PACKSIZE
 from math import ceil
 import sys
-from typing import List, Tuple
-
-PACKSIZE = 8192
-BUFF = 16384
-FILE_DIR = "./files/"
+from typing import List
+import ClientConnection as cc
 
 
 def intSignalHandler(signal, frame, socket: sk.socket):
@@ -39,22 +37,7 @@ def getResponseList(fileName: str, segmentNumber: int) -> List:
     return responseList
 
 
-class ClientConnection:
-    def __init__(self, sock: sk.socket, address):
-        self.sock = sock
-        self.address = address
-
-    def send(self, toSend):
-        if type(toSend) == str:
-            toSend = toSend.encode()
-        self.sock.sendto(toSend, self.address)
-
-    def recv(self) -> Tuple:
-        data, address = self.sock.recvfrom(BUFF)
-        return data, address
-
-
-def recvFile(clientConn: ClientConnection, data: dict) -> List:
+def recvFile(clientConn: cc.ClientConnection, data: dict) -> List:
     while data['index'] != -1:
         packList.insert(data["index"], data["bytes"])
         data, address = clientConn.recv()
@@ -79,7 +62,7 @@ if __name__ == "__main__":
     while True:
         print('waiting to receive message...')
         data, address = sock.recvfrom(BUFF)
-        clientConn = ClientConnection(sock, address)
+        clientConn = cc.ClientConnection(sock, address)
         dataLen = len(data)
         print(f'received {dataLen} bytes from {address}')
         command = data.decode('utf8')
@@ -135,12 +118,8 @@ if __name__ == "__main__":
                     os.remove(os.path.join(FILE_DIR, requestedFile))
                     break
         else:
-            response = 'Available commands:'
-            response += '\n'
-            response += 'ls -> lists all files available for download'
-            response += "\n"
-            response += "get <fileName> -> Download file"
-            response += "\n"
-            response += "put <fileName> -> Upload file"
-            response += "\n"
+            response = 'Available commands:\n'
+            response += 'ls -> lists all files available for download\n'
+            response += "get <fileName> -> Download file\n"
+            response += "put <fileName> -> Upload file\n"
             clientConn.send(response)

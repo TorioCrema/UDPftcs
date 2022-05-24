@@ -6,10 +6,7 @@ import socket as sk
 import os
 import sys
 from typing import Tuple
-
-PACKSIZE = 8192
-BUFF = 16384
-FILE_DIR = "./files/"
+from config import FILE_DIR, BUFF, PACKSIZE
 
 
 class Server:
