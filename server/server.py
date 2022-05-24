@@ -5,7 +5,7 @@ import socket as sk
 import os
 from math import ceil
 import sys
-from typing import Tuple
+from typing import List, Tuple
 
 PACKSIZE = 8192
 BUFF = 16384
@@ -19,12 +19,34 @@ def intSignalHandler(signal, frame, socket: sk.socket):
     sys.exit(0)
 
 
+def getFileLen(fileName: str) -> int:
+    fileName = FILE_DIR + fileName
+    with open(fileName, "rb") as file:
+        response = file.read()
+    packNum = 1
+    responseSize = len(response)
+    if responseSize > PACKSIZE:
+        packNum = ceil(responseSize / PACKSIZE)
+    return packNum
+
+
+def getResponseList(fileName: str) -> List:
+    with open(FILE_DIR + fileName, "rb") as file:
+        responseList = []
+        for i in range(segmentNumber):
+            toSend = {"index": i, "bytes": file.read(PACKSIZE)}
+            responseList.append(toSend)
+    return responseList
+
+
 class ClientConnection:
     def __init__(self, sock: sk.socket, address):
         self.sock = sock
         self.address = address
 
-    def send(self, toSend: bytes):
+    def send(self, toSend):
+        if type(toSend) == str:
+            toSend = toSend.encode()
         sock.sendto(toSend, address)
 
     def recv(self) -> Tuple:
@@ -42,17 +64,17 @@ if __name__ == "__main__":
     sock.bind(server_address)
 
     while True:
-        print('\n\r waiting to receive message...')
+        print('waiting to receive message...')
         data, address = sock.recvfrom(BUFF)
         clientConn = ClientConnection(sock, address)
-
-        print('received %s bytes from %s' % (len(data), address))
+        dataLen = len(data)
+        print(f'received {dataLen} bytes from {address}')
         command = data.decode('utf8')
         print(command)
 
         if command == 'ls':
             print("Sending ACK")
-            clientConn.send("ACK".encode())
+            clientConn.send("ACK")
             files = os.scandir(path=FILE_DIR)
             response = 'Available files:\n'
             for entry in files:
@@ -60,32 +82,25 @@ if __name__ == "__main__":
                     response += entry.name + "\n"
             clientConn.send(response.encode())
         elif command.split()[0] == "get":
+            name = command.split()[1]
             try:
-                name = FILE_DIR + command.split()[1]
-                with open(name, "rb") as requestedFile:
-                    response = requestedFile.read()
-                segmentNumber = 1
-                responseSize = len(response)
-                if responseSize > PACKSIZE:
-                    segmentNumber = ceil(responseSize / PACKSIZE)
+                segmentNumber = getFileLen(name)
             except IOError:
-                clientConn.send("Invalid command".encode())
+                clientConn.send("Invalid command")
                 continue
 
-            clientConn.send("ACK".encode())
-            clientConn.send(str(segmentNumber).encode())
-            with open(name, "rb") as file:
-                responseList = []
-                for i in range(segmentNumber):
-                    toSend = {"index": i, "bytes": file.read(PACKSIZE)}
-                    responseList.append(toSend)
+            clientConn.send("ACK")
+            clientConn.send(str(segmentNumber))
+
+            responseList = getResponseList(name)
             for i in range(segmentNumber):
                 print(f"Sending package number {i}/{segmentNumber}", end='\r')
                 clientConn.send(pickle.dumps(responseList[i]))
             # send end of file
             clientConn.send(pickle.dumps({"index": -1, "bytes": b"0"}))
+
         elif command.split()[0] == "put":
-            clientConn.send("ACK".encode())
+            clientConn.send("ACK")
             requestedFile = command.split()[1]
             print(f"Starting download of {requestedFile}")
             packNum = -1
@@ -105,10 +120,10 @@ if __name__ == "__main__":
                         for packData in packList:
                             newFile.write(packData)
                     print(f"{requestedFile} downloaded from client correctly.")
-                    clientConn.send("ACK".encode())
+                    clientConn.send("ACK")
                 except sk.timeout:
                     print("Error while downloading file, aborting operation.")
-                    clientConn.send("Error".encode())
+                    clientConn.send("Error")
                     os.remove(os.path.join(FILE_DIR, requestedFile))
                     break
         else:
@@ -120,4 +135,4 @@ if __name__ == "__main__":
             response += "\n"
             response += "put <fileName> -> Upload file"
             response += "\n"
-            clientConn.send(response.encode())
+            clientConn.send(response)
