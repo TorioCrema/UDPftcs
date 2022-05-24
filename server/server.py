@@ -7,7 +7,7 @@ from config import FILE_DIR, BUFF, PACKSIZE
 from math import ceil
 import sys
 from typing import List
-import ClientConnection as cc
+from ClientConnection import ClientConnection
 
 
 def intSignalHandler(signal, frame, socket: sk.socket):
@@ -37,7 +37,7 @@ def getResponseList(fileName: str, segmentNumber: int) -> List:
     return responseList
 
 
-def recvFile(clientConn: cc.ClientConnection, data: dict) -> List:
+def recvFile(clientConn: ClientConnection, data: dict) -> List:
     packList = []
     while data['index'] != -1:
         packList.insert(data["index"], data["bytes"])
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     while True:
         print('waiting to receive message...')
         data, address = sock.recvfrom(BUFF)
-        clientConn = cc.ClientConnection(sock, address)
+        clientConn = ClientConnection(sock, address)
         dataLen = len(data)
         print(f'received {dataLen} bytes from {address}')
         command = data.decode('utf8')
