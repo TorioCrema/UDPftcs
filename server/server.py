@@ -99,24 +99,26 @@ if __name__ == "__main__":
             clientConn.send("ACK")
             requestedFile = command.split()[1]
             print(f"Starting download of {requestedFile}")
-            packNum = -1
-            packList = []
-            while len(packList) != packNum:
-                try:
-                    data, address = clientConn.recv()
-                    data = data.decode()
-                    packNum = int(data)
-                    data, address = clientConn.recv()
-                    data = pickle.loads(data)
-                    packList = recvFile(clientConn, data)
-                    writeFile(requestedFile, packList)
-                    print(f"{requestedFile} downloaded from client correctly.")
-                    clientConn.send("ACK")
-                except sk.timeout or IOError:
+            try:
+                data, address = clientConn.recv()
+                data = data.decode()
+                packNum = int(data)
+                data, address = clientConn.recv()
+                data = pickle.loads(data)
+                packList = recvFile(clientConn, data)
+                writeFile(requestedFile, packList)
+                print(f"{requestedFile} downloaded from client correctly.")
+                if len(packList) != packNum:
                     print("Error while downloading file, aborting operation.")
                     clientConn.send("Error")
                     os.remove(os.path.join(FILE_DIR, requestedFile))
-                    break
+
+                else:
+                    clientConn.send("ACK")
+            except sk.timeout or IOError:
+                print("Error while downloading file, aborting operation.")
+                clientConn.send("Error")
+                os.remove(os.path.join(FILE_DIR, requestedFile))
         else:
             response = 'Available commands:\n'
             response += 'ls -> lists all files available for download\n'
