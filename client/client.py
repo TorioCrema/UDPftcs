@@ -5,6 +5,7 @@ import signal
 import socket as sk
 import os
 import sys
+from typing import List
 from config import FILE_DIR, PACKSIZE
 from Server import Server
 
@@ -13,6 +14,42 @@ def signalHandler(signal, frame, socket: sk.socket):
     socket.close()
     print("\nExiting...\n")
     sys.exit(0)
+
+
+def getCommandList(server: Server) -> List:
+    print(f"Sending {message}")
+    server.sendToServer(message)
+    data, address = server.recFromServer()
+    data = data.decode()
+    print(data)
+    commands = []
+    responseList = data.split('\n')[1:-1]
+    for line in responseList:
+        command = line.split()
+        commands.append(command[0])
+    return commands
+
+
+def checkCommandExists(inputCommand: str) -> bool:
+    return inputCommand.split()[0] in commands
+
+
+def checkCommandLength(inputCommand: str) -> bool:
+    return len(inputCommand.split()[0]) > 2
+
+
+def checkFileExists(inputCommand: str) -> bool:
+    if inputCommand.split()[0] != "put":
+        return True
+    files = os.scandir(path=FILE_DIR)
+    nameList = [i.name for i in files if i.is_file]
+    name = inputCommand.split()[1]
+    return name in nameList
+
+
+def checkCommand(inputCommand: str) -> bool:
+    checks = [checkCommandExists, checkCommandLength, checkFileExists]
+    return False not in [check(inputCommand) for check in checks]
 
 
 if __name__ == "__main__":
@@ -26,21 +63,11 @@ if __name__ == "__main__":
     # Get command list from server
     while True:
         try:
-            print(f'sending "{message}"')
-            sent = server.sendToServer(message)
-            print('waiting for server response\n')
-            received, address = server.recFromServer()
-            received = received.decode()
-            print(received)
-            # Create available commands list
-            responseList = received.split('\n')[1:-1]
-            for word in responseList:
-                command = word.split()
-                commands.append(command[0])
+            commands = getCommandList(server)
             break
-        except Exception as info:
-            print(info)
-            continue
+        except sk.timeout:
+            print("Server timed out on first message.")
+            print("Trying again...")
 
     signalHandler = partial(signalHandler, socket=server.socket)
     signal.signal(signal.SIGINT, signalHandler)
@@ -48,27 +75,9 @@ if __name__ == "__main__":
 
     while True:
         inputCommand = input("Enter command: ")
-        # Check that command is in command list from server
-        if inputCommand.split()[0] not in commands:
-            print("Please insert a valid command.")
-            continue
-
-        # Check number of files in command
-        if len(inputCommand.split()) > 2:
-            print("Please upload or download one file at a time.")
-            continue
-
-        # Check that upload file exists
-        if inputCommand.split()[0] == "put":
-            files = os.scandir(path=FILE_DIR)
-            nameList = [i.name for i in files if i.is_file]
-            name = inputCommand.split()[1]
-            if name not in nameList:
-                currDir = os.getcwd()
-                print(f"File {name} not found.")
-                print("Make sure the file is in the ", end="")
-                print(f"{currDir}/files directory.")
-                continue
+        if checkCommand(inputCommand) is False:
+            print("Command invalid")
+            break
 
         # Check command is valid from server
         if server.sendCommand(inputCommand) is False:
