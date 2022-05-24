@@ -38,10 +38,12 @@ def getResponseList(fileName: str, segmentNumber: int) -> List:
 
 
 def recvFile(clientConn: cc.ClientConnection, data: dict) -> List:
+    packList = []
     while data['index'] != -1:
         packList.insert(data["index"], data["bytes"])
         data, address = clientConn.recv()
         data = pickle.loads(data)
+    return packList
 
 
 def writeFile(fileName: str, packList: List):
