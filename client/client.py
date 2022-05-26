@@ -98,7 +98,6 @@ if __name__ == "__main__":
     while True:
         try:
             commands = getCommandList(server)
-            print(commands)
             break
         except sk.timeout:
             print("Server timed out on first message.")
@@ -111,7 +110,7 @@ if __name__ == "__main__":
     while True:
         inputCommand = input("Enter command: ")
         if checkCommand(inputCommand) is False:
-            print("Command not in command list")
+            print("Invalid command.")
             continue
 
         # Check command is valid from server
