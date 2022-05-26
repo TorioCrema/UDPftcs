@@ -82,18 +82,18 @@ if __name__ == "__main__":
         elif command.split()[0] == "get":
             name = command.split()[1]
             try:
-                segmentNumber = getFileLen(name)
+                packNum = getFileLen(name)
             except IOError:
                 clientConn.send("Invalid command")
                 continue
 
             clientConn.send("ACK")
-            clientConn.send(str(segmentNumber))
+            clientConn.send(str(packNum))
 
-            responseList = getResponseList(name, segmentNumber)
-            for i in range(segmentNumber):
-                print(f"Sending package number {i}/{segmentNumber}", end='\r')
-                clientConn.send(pickle.dumps(responseList[i]))
+            responseList = getResponseList(name, packNum)
+            for i in responseList:
+                print(f"Sending package {i['index']}/{packNum}", end='\r')
+                clientConn.send(pickle.dumps(i))
             # send end of file
             clientConn.send(pickle.dumps({"index": -1, "bytes": b"0"}))
 
