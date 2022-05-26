@@ -80,6 +80,7 @@ def recvFile(server: Server) -> Tuple:
     data = pickle.loads(data)
     packList = []
     while data['index'] != -1:
+        print(f"{data['index']}/{packNum}", end='\r')
         packList.insert(data['index'], data['bytes'])
         data, address = server.recFromServer()
         data = pickle.loads(data)
@@ -129,7 +130,7 @@ if __name__ == "__main__":
             packList = []
             while len(packList) != packNum:
                 try:
-                    print(f"Starting download of {requestedFile}", end='\r')
+                    print(f"Starting download of {requestedFile}")
                     packNum, packList = recvFile(server)
                 except sk.timeout:
                     # if server times out, send command again
@@ -143,7 +144,7 @@ if __name__ == "__main__":
             print(f"Downloaded {requestedFile} file from server")
 
         elif inputCommand.split()[0] == "put":
-            name = FILE_DIR + inputCommand.split()[1]
+            name = inputCommand.split()[1]
             try:
                 packNum = getFileLen(name)
             except IOError:
