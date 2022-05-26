@@ -140,7 +140,7 @@ if __name__ == "__main__":
                     continue
 
             with open(FILE_DIR + requestedFile, "wb") as newFile:
-                [newFile.write(i) for i in packList]
+                newFile.write(i for i in packList)
             print(f"Downloaded {requestedFile} file from server")
 
         elif inputCommand.split()[0] == "put":
