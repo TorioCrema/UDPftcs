@@ -8,6 +8,7 @@ from math import ceil
 import sys
 from typing import List, Tuple
 from ClientConnection import ClientConnection
+from time import sleep
 
 
 def intSignalHandler(signal, frame, socket: sk.socket):
@@ -46,16 +47,17 @@ def recvFile(clientConn: ClientConnection) -> Tuple:
     data = pickle.loads(data)
     packList = []
     while data['index'] != -1 or packNum == -1:
-        packList.insert(data["index"], data["bytes"])
+        packList.append(data)
         data, address = clientConn.recv()
         data = pickle.loads(data)
+    packList.sort(key=lambda x: x['index'])
     return packNum, packList
 
 
 def writeFile(fileName: str, packList: List):
     with open(FILE_DIR + fileName, "wb") as file:
         for pack in packList:
-            file.write(pack)
+            file.write(pack['bytes'])
 
 
 if __name__ == "__main__":
@@ -101,6 +103,7 @@ if __name__ == "__main__":
             for i in responseList:
                 print(f"Sending package {i['index']}/{packNum}", end='\r')
                 clientConn.send(pickle.dumps(i))
+                sleep(0.0001)
             # send end of file
             clientConn.send(pickle.dumps({"index": -1, "bytes": b"0"}))
 
