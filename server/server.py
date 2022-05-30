@@ -9,6 +9,7 @@ import sys
 from typing import List, Tuple
 from ClientConnection import ClientConnection
 from time import sleep
+from hashlib import sha256
 
 
 def intSignalHandler(signal, frame, socket: sk.socket):
@@ -104,8 +105,11 @@ if __name__ == "__main__":
                 print(f"Sending package {i['index']}/{packNum}", end='\r')
                 clientConn.send(pickle.dumps(i))
                 sleep(0.0001)
-            # send end of file
-            clientConn.send(pickle.dumps({"index": -1, "bytes": b"0"}))
+            # send sha of file
+            with open(FILE_DIR + name, 'rb') as file:
+                fileBytes = file.read()
+            toSend = {"index": -1, "sha": sha256(fileBytes).hexdigest()}
+            clientConn.send(pickle.dumps(toSend))
 
         elif command.split()[0] == "put":
             clientConn.send("ACK")

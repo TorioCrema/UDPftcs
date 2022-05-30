@@ -8,11 +8,13 @@ import sys
 from typing import List, Tuple
 from config import FILE_DIR, PACKSIZE
 from Server import Server
+from hashlib import sha256
 
 
 def signalHandler(signal, frame, socket: sk.socket):
+    print("Closing socket...")
     socket.close()
-    print("\nExiting...\n")
+    print("Quitting...")
     sys.exit(0)
 
 
@@ -72,20 +74,27 @@ def checkCommand(inputCommand: str) -> bool:
     return False not in [check(inputCommand) for check in checks]
 
 
+def getLocalSha(packList: List) -> str:
+    bytesList = [i['bytes'] for i in packList]
+    bytesStr = b''.join(bytesList)
+    return sha256(bytesStr).hexdigest()
+
+
 def recvFile(server: Server) -> Tuple:
     data, address = server.recFromServer()
     data = data.decode()
     packNum = int(data)
-    data, address = server.recFromServer()
-    data = pickle.loads(data)
     packList = []
-    while data['index'] != -1:
-        print(f"{data['index']}/{packNum}", end='\r')
-        packList.append(data)
+    while True:
         data, address = server.recFromServer()
         data = pickle.loads(data)
+        if data['index'] == -1:
+            break
+        packList.append(data)
+        print(f"{data['index']}/{packNum}", end='\r')
     packList.sort(key=lambda x: x['index'])
-    return packNum, packList
+    remoteSha = data['sha']
+    return packNum, packList, remoteSha
 
 
 if __name__ == "__main__":
@@ -127,12 +136,14 @@ if __name__ == "__main__":
 
         elif inputCommand.split()[0] == "get":
             requestedFile = inputCommand.split()[1]
-            packNum = -1
-            packList = []
-            while len(packList) != packNum:
+            while True:
                 try:
                     print(f"Starting download of {requestedFile}")
-                    packNum, packList = recvFile(server)
+                    packNum, packList, remoteSha = recvFile(server)
+                    localSha = getLocalSha(packList)
+                    if localSha == remoteSha:
+                        break
+                    print("File hash differs, downloading again...")
                 except sk.timeout:
                     # if server times out, send command again
                     server.sendCommand(inputCommand)
