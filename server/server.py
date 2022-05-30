@@ -39,20 +39,28 @@ def getResponseList(fileName: str, segmentNumber: int) -> List:
     return responseList
 
 
+def getLocalSha(packList: List) -> str:
+    bytesList = [i['bytes'] for i in packList]
+    bytesStr = b''.join(bytesList)
+    return sha256(bytesStr).hexdigest()
+
+
 def recvFile(clientConn: ClientConnection) -> Tuple:
     clientConn.sock.settimeout(3.0)
     data, address = clientConn.recv()
     data = data.decode()
     packNum = int(data)
-    data, address = clientConn.recv()
-    data = pickle.loads(data)
+    if packNum == -1:
+        return packNum, [], ""
     packList = []
-    while data['index'] != -1 or packNum == -1:
-        packList.append(data)
+    while True:
         data, address = clientConn.recv()
         data = pickle.loads(data)
+        if data['index'] == -1:
+            break
+        packList.append(data)
     packList.sort(key=lambda x: x['index'])
-    return packNum, packList
+    return packNum, packList, data['sha']
 
 
 def writeFile(fileName: str, packList: List):
@@ -105,19 +113,17 @@ if __name__ == "__main__":
                 print(f"Sending package {i['index']}/{packNum}", end='\r')
                 clientConn.send(pickle.dumps(i))
                 sleep(0.0001)
-            # send sha of file
-            with open(FILE_DIR + name, 'rb') as file:
-                fileBytes = file.read()
-            toSend = {"index": -1, "sha": sha256(fileBytes).hexdigest()}
-            clientConn.send(pickle.dumps(toSend))
+            # send file hash
+            localHash = getLocalSha(responseList)
+            clientConn.send(pickle.dumps({"index": -1, "sha": localHash}))
 
         elif command.split()[0] == "put":
             clientConn.send("ACK")
             requestedFile = command.split()[1]
             print(f"Starting download of {requestedFile}")
             try:
-                packNum, packList = recvFile(clientConn)
-                if len(packList) != packNum:
+                packNum, packList, remoteSha = recvFile(clientConn)
+                if getLocalSha(packList) != remoteSha:
                     print("Error while downloading file, aborting operation.")
                     clientConn.send("Error")
                 else:

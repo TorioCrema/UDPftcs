@@ -93,8 +93,7 @@ def recvFile(server: Server) -> Tuple:
         packList.append(data)
         print(f"{data['index']}/{packNum}", end='\r')
     packList.sort(key=lambda x: x['index'])
-    remoteSha = data['sha']
-    return packNum, packList, remoteSha
+    return packNum, packList, data['sha']
 
 
 if __name__ == "__main__":
@@ -161,6 +160,7 @@ if __name__ == "__main__":
                 packNum = getFileLen(name)
             except IOError:
                 print("Error while reading file.")
+                server.sendToServer(str(-1))
                 continue
 
             server.sendToServer(str(packNum))
@@ -168,8 +168,9 @@ if __name__ == "__main__":
             for i in uploadList:
                 print(f"Sending package {i['index']}/{packNum}", end="\r")
                 server.sendToServer(pickle.dumps(i))
-            # send end of file
-            server.sendToServer(pickle.dumps({"index": -1, "bytes": b"0"}))
+            # send file hash
+            localHash = getLocalSha(uploadList)
+            server.sendToServer(pickle.dumps({"index": -1, "sha": localHash}))
             try:
                 data, address = server.recFromServer()
                 data = data.decode()
