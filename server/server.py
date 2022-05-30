@@ -3,7 +3,7 @@ import pickle
 import signal
 import socket as sk
 import os
-from config import FILE_DIR, BUFF, PACKSIZE
+from config import FILE_DIR, BUFF, PACKSIZE, COMMANDS
 from math import ceil
 import sys
 from typing import List, Tuple
@@ -134,8 +134,4 @@ if __name__ == "__main__":
                 print("Error while downloading file, aborting operation.")
                 clientConn.send("Error")
         else:
-            response = 'Available commands:\n'
-            response += 'ls -> lists all files available for download\n'
-            response += "get <fileName> -> Download file\n"
-            response += "put <fileName> -> Upload file\n"
-            clientConn.send(response)
+            clientConn.send(COMMANDS)
