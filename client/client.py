@@ -81,9 +81,10 @@ def recvFile(server: Server) -> Tuple:
     packList = []
     while data['index'] != -1:
         print(f"{data['index']}/{packNum}", end='\r')
-        packList.insert(data['index'], data['bytes'])
+        packList.append(data)
         data, address = server.recFromServer()
         data = pickle.loads(data)
+    packList.sort(key=lambda x: x['index'])
     return packNum, packList
 
 
@@ -138,9 +139,9 @@ if __name__ == "__main__":
                     print("Server timed out, starting over.")
                     packList = []
                     continue
-
             with open(FILE_DIR + requestedFile, "wb") as newFile:
-                newFile.write(i for i in packList)
+                for i in packList:
+                    newFile.write(i['bytes'])
             print(f"Downloaded {requestedFile} file from server")
 
         elif inputCommand.split()[0] == "put":
