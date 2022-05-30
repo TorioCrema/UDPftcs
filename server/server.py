@@ -13,9 +13,9 @@ from hashlib import sha256
 
 
 def intSignalHandler(signal, frame, socket: sk.socket):
-    print("Closing socket.")
+    print("\nClosing socket.")
     socket.close()
-    print("Exiting")
+    print("Quitting...")
     sys.exit(0)
 
 

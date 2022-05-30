@@ -12,7 +12,7 @@ from hashlib import sha256
 
 
 def signalHandler(signal, frame, socket: sk.socket):
-    print("Closing socket...")
+    print("\nClosing socket...")
     socket.close()
     print("Quitting...")
     sys.exit(0)
@@ -103,6 +103,9 @@ if __name__ == "__main__":
     server.socket.settimeout(3.0)
     message = 'first message'
     commands = []
+    signalHandler = partial(signalHandler, socket=server.socket)
+    signal.signal(signal.SIGINT, signalHandler)
+    print("Insert ctrl-c to quit.")
 
     # Get command list from server
     while True:
@@ -112,10 +115,6 @@ if __name__ == "__main__":
         except sk.timeout:
             print("Server timed out on first message.")
             print("Trying again...")
-
-    signalHandler = partial(signalHandler, socket=server.socket)
-    signal.signal(signal.SIGINT, signalHandler)
-    print("Insert ctrl-c to quit.\n")
 
     while True:
         inputCommand = input("Enter command: ")
