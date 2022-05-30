@@ -12,6 +12,12 @@ from hashlib import sha256
 
 
 def signalHandler(signal, frame, socket: sk.socket):
+    """Handler for interrupt signal from standard input
+
+    Args:
+        socket (socket): the socket that will be closed before
+        quitting the execution
+    """
     print("\nClosing socket...")
     socket.close()
     print("Quitting...")
@@ -19,6 +25,16 @@ def signalHandler(signal, frame, socket: sk.socket):
 
 
 def getCommandList(server: Server) -> List:
+    """Receives and parses the available commands from the server
+
+    Args:
+        sever (Server): the server from which to receive the list
+        of commands
+
+    Returns:
+        List: the list of available commands as strings
+    """
+    message = "first message"
     print(f"Sending {message}")
     server.sendToServer(message)
     data, address = server.recFromServer()
@@ -33,6 +49,12 @@ def getCommandList(server: Server) -> List:
 
 
 def getFileLen(fileName: str) -> int:
+    """Returns the number of packets a file will be sent in
+
+    Args:
+        fileName (str): the name of the file from which the
+        packet number will be calculated
+    """
     fileName = FILE_DIR + fileName
     with open(fileName, "rb") as file:
         response = file.read()
@@ -44,6 +66,16 @@ def getFileLen(fileName: str) -> int:
 
 
 def getResponseList(fileName: str, segmentNumber: int) -> List:
+    """Returns the list of packets to send to the client
+
+    Args:
+        fileName (str): the name of the file to send to the client
+        segmentNumber (int) the number of segments the file will be
+        split into
+
+    Returns:
+        List: a list of dictionaries with index and bytes keys
+    """
     with open(FILE_DIR + fileName, "rb") as file:
         responseList = []
         for i in range(segmentNumber):
@@ -53,14 +85,17 @@ def getResponseList(fileName: str, segmentNumber: int) -> List:
 
 
 def checkCommandExists(inputCommand: str) -> bool:
+    """Checks if a command is in the available commands list"""
     return inputCommand.split()[0] in commands
 
 
 def checkCommandLength(inputCommand: str) -> bool:
+    """Checks that a command has no more that 2 strings in it"""
     return len(inputCommand.split()) <= 2
 
 
 def checkFileExists(inputCommand: str) -> bool:
+    """Checks that the file for a 'put' command exists"""
     if inputCommand.split()[0] != "put":
         return True
     files = os.scandir(path=FILE_DIR)
@@ -70,17 +105,40 @@ def checkFileExists(inputCommand: str) -> bool:
 
 
 def checkCommand(inputCommand: str) -> bool:
+    """Executes all checks on a command"""
     checks = [checkCommandExists, checkCommandLength, checkFileExists]
     return False not in [check(inputCommand) for check in checks]
 
 
 def getLocalSha(packList: List) -> str:
+    """Returns the sha256 of the received packList
+
+    Args:
+        packList (List): the list of dictionaries received from the client
+
+    Returns:
+        str: the hex encoded string representing the sha256 hash of the
+        concatenated bytes list
+    """
     bytesList = [i['bytes'] for i in packList]
     bytesStr = b''.join(bytesList)
     return sha256(bytesStr).hexdigest()
 
 
 def recvFile(server: Server) -> Tuple:
+    """Receives from Server unti end of file
+
+    Can throw a timeout exeption
+
+    Args:
+        server (Server): the Server from which to receive
+        the data
+
+    Returns:
+        Tuple: a tuple with the number of packs the file war
+        split into the list of received data and the correct
+        hash of the file
+    """
     data, address = server.recFromServer()
     data = data.decode()
     packNum = int(data)
@@ -101,7 +159,6 @@ if __name__ == "__main__":
     server_address = ('localhost', 10000)
     server = Server(sock, server_address)
     server.socket.settimeout(3.0)
-    message = 'first message'
     commands = []
     signalHandler = partial(signalHandler, socket=server.socket)
     signal.signal(signal.SIGINT, signalHandler)

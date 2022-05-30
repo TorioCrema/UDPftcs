@@ -13,6 +13,12 @@ from hashlib import sha256
 
 
 def intSignalHandler(signal, frame, socket: sk.socket):
+    """Handler for interrupt signal from standard input
+
+    Args:
+        socket (socket): the socket that will be colsed before
+        quitting the execution
+    """
     print("\nClosing socket.")
     socket.close()
     print("Quitting...")
@@ -20,6 +26,12 @@ def intSignalHandler(signal, frame, socket: sk.socket):
 
 
 def getFileLen(fileName: str) -> int:
+    """Returns the number of packets a file will be sent in
+
+    Args:
+        fileName (str): the name of the file from which the
+        packet number will be calculated
+    """
     fileName = FILE_DIR + fileName
     with open(fileName, "rb") as file:
         response = file.read()
@@ -31,6 +43,16 @@ def getFileLen(fileName: str) -> int:
 
 
 def getResponseList(fileName: str, segmentNumber: int) -> List:
+    """Returns the list of packets to send to the client
+
+    Args:
+        fileName (str): the name of the file to send to the client
+        segmentNumber (int) the number of segments the file will be
+        split into
+
+    Returns:
+        List: a list of dictionaries with index and bytes keys
+    """
     with open(FILE_DIR + fileName, "rb") as file:
         responseList = []
         for i in range(segmentNumber):
@@ -40,12 +62,33 @@ def getResponseList(fileName: str, segmentNumber: int) -> List:
 
 
 def getLocalSha(packList: List) -> str:
+    """Returns the sha256 of the received packList
+
+    Args:
+        packList (List): the list of dictionaries received from the client
+
+    Returns:
+        str: the hex encoded string representing the sha256 hash of the
+        concatenated bytes list
+    """
     bytesList = [i['bytes'] for i in packList]
     bytesStr = b''.join(bytesList)
     return sha256(bytesStr).hexdigest()
 
 
 def recvFile(clientConn: ClientConnection) -> Tuple:
+    """Receives from clientConn until end of file
+
+    Can throw a timeout exception
+
+    Args:
+        clientConn (ClientConnection): the ClientConnection object
+        from which to receive the data
+
+    Returns:
+        Tuple: a tuple with the number of packs the file was split into,
+        the list of received data and the correct hash of the file
+    """
     clientConn.sock.settimeout(3.0)
     data, address = clientConn.recv()
     data = data.decode()
@@ -64,6 +107,13 @@ def recvFile(clientConn: ClientConnection) -> Tuple:
 
 
 def writeFile(fileName: str, packList: List):
+    """Writes into a new file the bytes for a list
+
+    Args:
+        fileName (str): the name of the file to write into
+        packList (List): the list of dictionaries containig
+        the bytes of the file
+    """
     with open(FILE_DIR + fileName, "wb") as file:
         for pack in packList:
             file.write(pack['bytes'])
@@ -89,8 +139,9 @@ if __name__ == "__main__":
         print(command)
 
         if command == 'ls':
-            print("Sending ACK")
+            # Sends valid command ACK to the client
             clientConn.send("ACK")
+            # Gets all files in the default file directry
             files = os.scandir(path=FILE_DIR)
             response = 'Available files:\n'
             for entry in files:
@@ -104,7 +155,7 @@ if __name__ == "__main__":
             except IOError:
                 clientConn.send("Invalid command")
                 continue
-
+            # Sends valid command ACK to the client
             clientConn.send("ACK")
             clientConn.send(str(packNum))
 
@@ -112,12 +163,14 @@ if __name__ == "__main__":
             for i in responseList:
                 print(f"Sending package {i['index']}/{packNum}", end='\r')
                 clientConn.send(pickle.dumps(i))
+                # sleeps so as not to fill the clients buffer
                 sleep(0.0001)
             # send file hash
             localHash = getLocalSha(responseList)
             clientConn.send(pickle.dumps({"index": -1, "sha": localHash}))
 
         elif command.split()[0] == "put":
+            # Sends valid command ACK to the client
             clientConn.send("ACK")
             requestedFile = command.split()[1]
             print(f"Starting download of {requestedFile}")
