@@ -6,7 +6,7 @@ import socket as sk
 import os
 import sys
 from typing import List, Tuple
-from config import FILE_DIR, PACKSIZE
+from config import FILE_DIR, PACKSIZE, TIMEOUT_TIMER
 from Server import Server
 from hashlib import sha256
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
     server_address = ('localhost', 10000)
     server = Server(sock, server_address)
-    server.socket.settimeout(3.0)
+    server.socket.settimeout(TIMEOUT_TIMER)
     commands = []
     signalHandler = partial(signalHandler, socket=server.socket)
     signal.signal(signal.SIGINT, signalHandler)

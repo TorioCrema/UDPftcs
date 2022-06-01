@@ -3,7 +3,7 @@ import pickle
 import signal
 import socket as sk
 import os
-from config import FILE_DIR, BUFF, PACKSIZE, COMMANDS
+from config import FILE_DIR, BUFF, PACKSIZE, COMMANDS, TIMEOUT_TIMER
 from math import ceil
 import sys
 from typing import List, Tuple
@@ -89,7 +89,7 @@ def recvFile(clientConn: ClientConnection) -> Tuple:
         Tuple: a tuple with the number of packs the file was split into,
         the list of received data and the correct hash of the file
     """
-    clientConn.sock.settimeout(3.0)
+    clientConn.sock.settimeout(TIMEOUT_TIMER)
     data, address = clientConn.recv()
     data = data.decode()
     packNum = int(data)
