@@ -7,7 +7,7 @@ import os
 import sys
 from time import sleep
 from typing import List, Tuple
-from config import FILE_DIR, PACKSIZE, TIMEOUT_TIMER, SERVER_ADDRESS
+from config import FILE_DIR, PACKSIZE, SLEEP_TIME, TIMEOUT_TIMER, SERVER_ADDRESS
 from Server import Server
 from hashlib import sha256
 
@@ -228,7 +228,7 @@ if __name__ == "__main__":
                 for i in uploadList:
                     print(f"Sending package {i['index']}/{packNum}", end="\r")
                     server.sendToServer(pickle.dumps(i))
-                    sleep(0.0001)
+                    sleep(SLEEP_TIME)
                 # send file hash
                 localHash = getLocalSha(uploadList)
                 hashPack = {"index": -1, "sha": localHash}

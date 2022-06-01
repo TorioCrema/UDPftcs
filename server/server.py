@@ -3,7 +3,7 @@ import pickle
 import signal
 import socket as sk
 import os
-from config import ADDRESS, FILE_DIR, BUFF, PACKSIZE, COMMANDS, TIMEOUT_TIMER
+from config import ADDRESS, FILE_DIR, BUFF, PACKSIZE, COMMANDS, SLEEP_TIME, TIMEOUT_TIMER
 from math import ceil
 import sys
 from typing import List, Tuple
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                     print(f"Sending package {i['index']}/{packNum}", end='\r')
                     clientConn.send(pickle.dumps(i))
                     # sleeps so as not to fill the clients buffer
-                    sleep(0.0001)
+                    sleep(SLEEP_TIME)
                 # send file hash
                 localHash = getLocalSha(responseList)
                 clientConn.send(pickle.dumps({"index": -1, "sha": localHash}))
