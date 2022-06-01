@@ -180,10 +180,12 @@ if __name__ == "__main__":
             continue
 
         # Check command is valid from server
-        if server.sendCommand(inputCommand) is False:
-            print("Invalid command.")
-            continue
-
+        try:
+            if server.sendCommand(inputCommand) is False:
+                print("Invalid command.")
+                continue
+        except sk.timeout:
+            print("Server timedout, trying again...")
         if inputCommand == "ls":
             data, address = server.recFromServer()
             data = data.decode()
@@ -201,7 +203,7 @@ if __name__ == "__main__":
                     print("File hash differs, downloading again...")
                 except sk.timeout:
                     # if server times out, send command again
-                    server.sendCommand(inputCommand)
+                    server.sendToServer(inputCommand)
                     print("Server timed out, starting over.")
                     packList = []
                     continue
@@ -212,30 +214,35 @@ if __name__ == "__main__":
 
         elif inputCommand.split()[0] == "put":
             name = inputCommand.split()[1]
-            try:
-                packNum = getFileLen(name)
-            except IOError:
-                print("Error while reading file.")
-                server.sendToServer(str(-1))
-                continue
+            while True:
+                try:
+                    packNum = getFileLen(name)
+                except IOError:
+                    print("Error while reading file.")
+                    server.sendToServer(str(-1))
+                    break
 
-            server.sendToServer(str(packNum))
-            uploadList = getResponseList(name, packNum)
-            for i in uploadList:
-                print(f"Sending package {i['index']}/{packNum}", end="\r")
-                server.sendToServer(pickle.dumps(i))
-            # send file hash
-            localHash = getLocalSha(uploadList)
-            server.sendToServer(pickle.dumps({"index": -1, "sha": localHash}))
-            try:
-                data, address = server.recFromServer()
-                data = data.decode()
-                if data == "ACK":
-                    print(f"File {name} uploaded correctly.")
-                else:
-                    print("Error while uploading file, try again.")
-            except sk.timeout:
-                print("Server timed out, file might not have been uploaded.")
+                server.sendToServer(str(packNum))
+                uploadList = getResponseList(name, packNum)
+                for i in uploadList:
+                    print(f"Sending package {i['index']}/{packNum}", end="\r")
+                    server.sendToServer(pickle.dumps(i))
+                # send file hash
+                localHash = getLocalSha(uploadList)
+                hashPack = {"index": -1, "sha": localHash}
+                server.sendToServer(pickle.dumps(hashPack))
+                try:
+                    data, address = server.recFromServer()
+                    data = data.decode()
+                    if data == "ACK":
+                        print(f"File {name} uploaded correctly.")
+                        break
+                    else:
+                        print("Error while uploading file, trying again.")
+                        server.sendToServer(inputCommand)
+                except sk.timeout:
+                    print("Server timed out trying again.")
+                    server.sendToServer(inputCommand)
         else:
             break
 

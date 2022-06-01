@@ -102,6 +102,7 @@ def recvFile(clientConn: ClientConnection) -> Tuple:
         if data['index'] == -1:
             break
         packList.append(data)
+        print(f"Receiving packet {data['index']}/{packNum}")
     packList.sort(key=lambda x: x['index'])
     return packNum, packList, data['sha']
 
@@ -129,62 +130,68 @@ if __name__ == "__main__":
     sock.bind(server_address)
 
     while True:
-        sock.settimeout(None)
-        print('waiting to receive message...')
-        data, address = sock.recvfrom(BUFF)
-        clientConn = ClientConnection(sock, address)
-        dataLen = len(data)
-        print(f'received {dataLen} bytes from {address}')
-        command = data.decode('utf8')
-        print(command)
+        try:
+            sock.settimeout(None)
+            print('waiting to receive message...')
+            data, address = sock.recvfrom(BUFF)
+            clientConn = ClientConnection(sock, address)
+            dataLen = len(data)
+            print(f'received {dataLen} bytes from {address}')
+            command = data.decode('utf8')
+            print(command)
 
-        if command == 'ls':
-            # Sends valid command ACK to the client
-            clientConn.send("ACK")
-            # Gets all files in the default file directry
-            files = os.scandir(path=FILE_DIR)
-            response = 'Available files:\n'
-            for entry in files:
-                if entry.is_file:
-                    response += entry.name + "\n"
-            clientConn.send(response.encode())
-        elif command.split()[0] == "get":
-            name = command.split()[1]
-            try:
-                packNum = getFileLen(name)
-            except IOError:
-                clientConn.send("Invalid command")
-                continue
-            # Sends valid command ACK to the client
-            clientConn.send("ACK")
-            clientConn.send(str(packNum))
+            if command == 'ls':
+                # Sends valid command ACK to the client
+                clientConn.send("ACK")
+                # Gets all files in the default file directry
+                files = os.scandir(path=FILE_DIR)
+                response = 'Available files:\n'
+                for entry in files:
+                    if entry.is_file:
+                        response += entry.name + "\n"
+                clientConn.send(response.encode())
+            elif command.split()[0] == "get":
+                name = command.split()[1]
+                try:
+                    packNum = getFileLen(name)
+                except IOError:
+                    clientConn.send("Invalid command")
+                    continue
+                # Sends valid command ACK to the client
+                clientConn.send("ACK")
+                clientConn.send(str(packNum))
 
-            responseList = getResponseList(name, packNum)
-            for i in responseList:
-                print(f"Sending package {i['index']}/{packNum}", end='\r')
-                clientConn.send(pickle.dumps(i))
-                # sleeps so as not to fill the clients buffer
-                sleep(0.0001)
-            # send file hash
-            localHash = getLocalSha(responseList)
-            clientConn.send(pickle.dumps({"index": -1, "sha": localHash}))
+                responseList = getResponseList(name, packNum)
+                for i in responseList:
+                    print(f"Sending package {i['index']}/{packNum}", end='\r')
+                    clientConn.send(pickle.dumps(i))
+                    # sleeps so as not to fill the clients buffer
+                    sleep(0.0001)
+                # send file hash
+                localHash = getLocalSha(responseList)
+                clientConn.send(pickle.dumps({"index": -1, "sha": localHash}))
 
-        elif command.split()[0] == "put":
-            # Sends valid command ACK to the client
-            clientConn.send("ACK")
-            requestedFile = command.split()[1]
-            print(f"Starting download of {requestedFile}")
-            try:
-                packNum, packList, remoteSha = recvFile(clientConn)
-                if getLocalSha(packList) != remoteSha:
+            elif command.split()[0] == "put":
+                # Sends valid command ACK to the client
+                clientConn.send("ACK")
+                requestedFile = command.split()[1]
+                print(f"Starting download of {requestedFile}")
+                try:
+                    packNum, packList, remoteSha = recvFile(clientConn)
+                    if getLocalSha(packList) != remoteSha:
+                        print("Error while downloading file")
+                        print("Aborting operation.")
+                        clientConn.send("Error")
+                    else:
+                        writeFile(requestedFile, packList)
+                        print(f"{requestedFile} downloaded from client")
+                        clientConn.send("ACK")
+                except sk.timeout or IOError:
                     print("Error while downloading file, aborting operation.")
                     clientConn.send("Error")
-                else:
-                    writeFile(requestedFile, packList)
-                    print(f"{requestedFile} downloaded from client correctly.")
-                    clientConn.send("ACK")
-            except sk.timeout or IOError:
-                print("Error while downloading file, aborting operation.")
-                clientConn.send("Error")
-        else:
-            clientConn.send(COMMANDS)
+            else:
+                clientConn.send(COMMANDS)
+        except (AssertionError, UnicodeDecodeError):
+            print("A different client has made a request")
+            print("Resetting server state.")
+            continue

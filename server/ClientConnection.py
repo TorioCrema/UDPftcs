@@ -46,4 +46,5 @@ class ClientConnection:
         address it was received from
         """
         data, address = self.sock.recvfrom(BUFF)
+        assert address == self.address
         return data, address
