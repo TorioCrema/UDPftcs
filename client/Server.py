@@ -36,7 +36,7 @@ class Server:
         received, address = self.socket.recvfrom(BUFF)
         return received, address
 
-    def sendToServer(self, message):
+    def sendToServer(self, message) -> int:
         """Sends a packet to the server
 
         Args:
