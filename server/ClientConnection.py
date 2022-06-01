@@ -16,7 +16,7 @@ class ClientConnection:
         IP and the client's port number
     """
 
-    def __init__(self, sock: socket.socket, address: Tuple):
+    def __init__(self, socket: socket.socket, address: Tuple):
         """Creates a new instance of the ClientConnection class
 
         Args:
@@ -27,7 +27,7 @@ class ClientConnection:
                 a Tuple containing a string representing the client's
                 IP and the client's port number
         """
-        self.sock = sock
+        self.socket = socket
         self.address = address
 
     def send(self, toSend):
@@ -37,7 +37,7 @@ class ClientConnection:
         """
         if type(toSend) == str:
             toSend = toSend.encode()
-        self.sock.sendto(toSend, self.address)
+        self.socket.sendto(toSend, self.address)
 
     def recv(self) -> Tuple:
         """Receives a message from the client
@@ -45,6 +45,6 @@ class ClientConnection:
         returns a Tuple containing the reiceived data and the
         address it was received from
         """
-        data, address = self.sock.recvfrom(BUFF)
+        data, address = self.socket.recvfrom(BUFF)
         assert address == self.address
         return data, address

@@ -89,7 +89,7 @@ def recvFile(clientConn: ClientConnection) -> Tuple:
         Tuple: a tuple with the number of packs the file was split into,
         the list of received data and the correct hash of the file
     """
-    clientConn.sock.settimeout(TIMEOUT_TIMER)
+    clientConn.socket.settimeout(TIMEOUT_TIMER)
     data, address = clientConn.recv()
     data = data.decode()
     packNum = int(data)
