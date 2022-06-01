@@ -2,3 +2,4 @@ PACKSIZE = 8192
 BUFF = 32768
 FILE_DIR = "./files/"
 TIMEOUT_TIMER = 3.0
+SERVER_ADDRESS = ('localhost', 10000)

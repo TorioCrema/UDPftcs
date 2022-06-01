@@ -6,3 +6,4 @@ COMMANDS = 'Available commands:\n' \
     + "get <fileName> -> Download file\n" \
     + "put <fileName> -> Upload file\n"
 TIMEOUT_TIMER = 3.0
+ADDRESS = ('localhost', 10000)

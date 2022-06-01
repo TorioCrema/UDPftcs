@@ -5,8 +5,9 @@ import signal
 import socket as sk
 import os
 import sys
+from time import sleep
 from typing import List, Tuple
-from config import FILE_DIR, PACKSIZE, TIMEOUT_TIMER
+from config import FILE_DIR, PACKSIZE, TIMEOUT_TIMER, SERVER_ADDRESS
 from Server import Server
 from hashlib import sha256
 
@@ -156,7 +157,7 @@ def recvFile(server: Server) -> Tuple:
 
 if __name__ == "__main__":
     sock = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
-    server_address = ('localhost', 10000)
+    server_address = SERVER_ADDRESS
     server = Server(sock, server_address)
     server.socket.settimeout(TIMEOUT_TIMER)
     commands = []
@@ -227,6 +228,7 @@ if __name__ == "__main__":
                 for i in uploadList:
                     print(f"Sending package {i['index']}/{packNum}", end="\r")
                     server.sendToServer(pickle.dumps(i))
+                    sleep(0.0001)
                 # send file hash
                 localHash = getLocalSha(uploadList)
                 hashPack = {"index": -1, "sha": localHash}

@@ -3,7 +3,7 @@ import pickle
 import signal
 import socket as sk
 import os
-from config import FILE_DIR, BUFF, PACKSIZE, COMMANDS, TIMEOUT_TIMER
+from config import ADDRESS, FILE_DIR, BUFF, PACKSIZE, COMMANDS, TIMEOUT_TIMER
 from math import ceil
 import sys
 from typing import List, Tuple
@@ -102,7 +102,7 @@ def recvFile(clientConn: ClientConnection) -> Tuple:
         if data['index'] == -1:
             break
         packList.append(data)
-        print(f"Receiving packet {data['index']}/{packNum}")
+        print(f"Receiving packet {data['index']}/{packNum}", end="\r")
     packList.sort(key=lambda x: x['index'])
     return packNum, packList, data['sha']
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     intSignalHandler = partial(intSignalHandler, socket=sock)
     signal.signal(signal.SIGINT, intSignalHandler)
 
-    server_address = ('localhost', 10000)
+    server_address = ADDRESS
     print(f'Starting up on {server_address[0]} port {server_address[1]}')
     sock.bind(server_address)
 
